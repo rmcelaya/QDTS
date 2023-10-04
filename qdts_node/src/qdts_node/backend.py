@@ -3,6 +3,7 @@ from simulaqron.settings import Config as SimulaqronConfig
 import tempfile
 import asyncio
 import queue
+import socket
 import random
 from concurrent.futures import ThreadPoolExecutor
 import json
@@ -149,6 +150,7 @@ class QBackend:
                         pass
                 b = '0' if m == 0 else '1'
                 self.muxdemux.send_classical(dst_node, (base,))
+                logger.debug("EPR created and based sent. Waiting for remote base")
                 (base_remote,) = self.muxdemux.recv_classical(dst_node)
                 if base_remote == base:
                     logger.debug("Bit: " + str(b))
@@ -192,6 +194,7 @@ class QBackend:
                             received = True
                     except Exception:
                         pass
+                logger.debug("Received EPR")
                 b = '0' if m == 0 else '1'
                 (remote_base, ) = self.muxdemux.recv_classical(dst_node)
                 if remote_base == base:
@@ -255,6 +258,7 @@ class QuantumMuxDemux:
             self.classical_buffer[name] = queue.Queue()
         self.config = config
         self.stop_event = threading.Event()
+        self.lock = threading.Lock()
 
     def start(self):
         self.classical_thread = threading.Thread(target=self.classical_receiver_thread_loop)
@@ -266,26 +270,43 @@ class QuantumMuxDemux:
 
     def classical_receiver_thread_loop(self):
         logger.info("Starting classical receiver thread loop")
-        with CQCConnection(self.config.node_name) as node:
-            while not self.stop_event.is_set():
-                try:
-                    recv_mes = node.recvClassical()
-                    logger.debug("Classical message received. Demultiplexing...")
-                    recv_json = json.loads(recv_mes.decode())
-                    host = recv_json["node_name"]
-                    value = base64.b64decode(recv_json["value"])
-                    logger.info("Received classical message from " + host + ": " + str(value))
-                    self.classical_buffer[host].put(value)
-                except Exception:
-                    logger.exception("Exception while receiving classical message")
+        serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # bind the socket to a public host, and a well-known port
+        serversocket.bind((self.config.node_ip, 9999))
+        serversocket.listen(100)
+        while True:
+            (clientsocket, address) = serversocket.accept()
+            try:
+                data = b''
+                recve = False
+                while not recve:
+                    part = clientsocket.recv(1)
+                    data += part
+                    if len(part) < 1:
+                        recve = True
+                recv_mes = data
+                clientsocket.close()
+                logger.debug("Classical message received. Demultiplexing...")
+                recv_json = json.loads(recv_mes.decode())
+                host = recv_json["node_name"]
+                value = base64.b64decode(recv_json["value"])
+                logger.info("Received classical message from " + host + ": " + str(value))
+                self.classical_buffer[host].put(value)
+            except Exception:
+                logger.exception("Exception while receiving classical message")
         logger.info("Classical receiver thread loop stopping")
 
     def recv_classical(self, remote_node):
         return self.classical_buffer[remote_node].get()
 
     def send_classical(self, remote_name, value):
-        with CQCConnection(self.config.node_name) as node:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((self.config.get_node_ip(remote_name), 9999))
             prepared_value = base64.b64encode(bytes(value)).decode()
             data = {"node_name": self.config.node_name, "value": prepared_value}
             data_json = json.dumps(data)
-            node.sendClassical(remote_name, data_json.encode())
+            s.send(data_json.encode())
+            s.close()
+        except:
+            logger.exception("Exception while sending classical message")

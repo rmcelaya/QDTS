@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qdts_node"
-version = "0.1.5"
+version = "0.1.6"
 description = ""
 authors = ["rmcelaya <rmcelaya@protonmail.com>"]
 
