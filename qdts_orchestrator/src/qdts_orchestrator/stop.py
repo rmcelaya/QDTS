@@ -11,13 +11,8 @@ stop_play = [
     "hosts": "all",
     "tasks":[
         {
-            "name": "Stop",
-            "shell":"killall qdts_node",
-            "ignore_errors": True
-        },
-        {
             "name": "Stopping python processes",
-            "shell":"killall python",
+            "shell":"killall -s SIGKILL python",
             "ignore_errors": True
         },
         {
@@ -32,16 +27,12 @@ stop_play = [
 
 
 
-def run():
-    if len(sys.argv) != 3:
-        print("Please provide a config file and a provisioning file")
+def stop():
+    if len(sys.argv) != 2:
+        print("Please provide an inventory file as argument")
         exit()
-    config_file_path = sys.argv[1]
-    inventory_file_path = sys.argv[2]
-    config = None
+    inventory_file_path = sys.argv[1]
     inv = None
-    with open(config_file_path) as config_file:
-        config = yaml.safe_load(config_file)
     with open( inventory_file_path) as inv_file:
         inv = yaml.safe_load(inv_file)
     
@@ -49,4 +40,4 @@ def run():
     
 
 if __name__ == "__main__":
-    run()
+    stop()

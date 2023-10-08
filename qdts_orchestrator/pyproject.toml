@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qdts_orchestrator"
-version = "0.1.0"
+version = "0.1.8"
 description = ""
 authors = ["rmcelaya <rmcelaya@protonmail.com>"]
 
@@ -14,6 +14,7 @@ ansible_runner="*"
 [tool.poetry.scripts]
 qdts_run = "qdts_orchestrator.run:run"
 qdts_stop = "qdts_orchestrator.stop:stop"
+qdts_install="qdts_orchestrator.install:install"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
