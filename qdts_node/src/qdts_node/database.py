@@ -9,7 +9,7 @@ def init():
     logger = logging.getLogger(__name__)
 
 
-QUEUE_MAX_SIZE = 20
+QUEUE_MAX_SIZE = 5
 
 
 class _Key:
@@ -41,13 +41,13 @@ class ApplicationURI:
         self.uri = uri
 
     def is_correct(self):
-        return len(self.uri.split(":")) == 2
+        return len(self.uri.split("@")) == 2
 
     def get_app(self):
-        return self.uri.split(":")[0]
+        return self.uri.split("@")[0]
 
     def get_server(self):
-        return self.uri.split(":")[1]
+        return self.uri.split("@")[1]
 
 
 class Database:

@@ -32,6 +32,7 @@ class _GRPCApplicationInterface(interfaces_pb2_grpc.ApplicationInterfaceServicer
         TIMEOUT_ERROR = 6
         OPEN_FAILED_QOS = 7
         GET_KEY_FAILED_METADATA_INSUFFICIENT = 8
+        STREAM_NOT_FOUND = 9
 
     def __init__(self, database, config, key_synchronizator):
         self.database = database
@@ -138,7 +139,7 @@ class _GRPCApplicationInterface(interfaces_pb2_grpc.ApplicationInterfaceServicer
         if len(request.ksid) != 16:
             await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "Incorrect KSID")
         status = await self.sanitized_close(request.ksid)
-        response = interfaces_pb2.CloseResponse(status=status)
+        response = interfaces_pb2.CloseResponse(status=status.value)
         logger.info("Sending response: " + str(response))
         return response
 
@@ -261,6 +262,11 @@ class _GRPCApplicationInterface(interfaces_pb2_grpc.ApplicationInterfaceServicer
             return 0, b"", b"", _GRPCApplicationInterface.Status.GET_KEY_FAILED_METADATA_INSUFFICIENT
 
         await self.database.lock_stream_id(ksid)
+
+        if not await self.database.key_stream_exists(ksid):
+            await self.database.unlock_stream_id(ksid)
+            return 0, b"", b"", _GRPCApplicationInterface.Status.STREAM_NOT_FOUND
+
         if not await self.database.key_stream_is_open(ksid):
             logger.warning("Get key was called for KSID " + str(ksid) + " but the peer is not connected")
             await self.database.unlock_stream_id(ksid)
@@ -291,6 +297,9 @@ class _GRPCApplicationInterface(interfaces_pb2_grpc.ApplicationInterfaceServicer
         """
         assert (type(ksid) == bytes and len(ksid) == 16)
         await self.database.lock_stream_id(ksid)
+        if not await self.database.key_stream_exists(ksid):
+            await self.database.unlock_stream_id(ksid)
+            return _GRPCApplicationInterface.Status.STREAM_NOT_FOUND
         await self.database.delete_key_stream(ksid)
         await self.database.unlock_stream_id(ksid)
         return _GRPCApplicationInterface.Status.SUCCESSFUL

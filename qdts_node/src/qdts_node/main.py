@@ -12,6 +12,7 @@ import qdts_node.key_management as key_management
 
 import time
 import aioconsole
+import daemon
 from logging.handlers import QueueListener
 from logging import FileHandler, StreamHandler
 import queue
@@ -88,37 +89,22 @@ class MainLoop:
         self.backend.stop()
 
 
-def start(pidfile, config_file):
-    # We load the configuration from this script rather than from the daemon.
-    config = configuration.Config(config_file)
-    main_loop = MainLoop()
-    main_loop.start_as_daemon(pidfile, config)
-
-
-def restart(pidfile):
-    main_daemon = MainLoop()
-    main_daemon.restart_as_daemon(pidfile)
-
-
-def stop(pidfile):
-    main_daemon = MainLoop()
-    main_daemon.stop_as_daemon(pidfile)
-
-
 async def non_daemon_start(config_file):
     config = configuration.Config(config_file)
     main_daemon = MainLoop()
     await main_daemon.start(config)
     await aioconsole.ainput(' ')
-    await main_daemon.stop()
-
+    #Stopping gracefully this software sucks. Just kill it
 
 
 def cli():
     argc = len(sys.argv)
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(non_daemon_start(CONFIG_FILE))
-    exit(0)
+    cwd = os.getcwd()
+    with daemon.DaemonContext():
+        os.chdir(cwd)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(non_daemon_start(CONFIG_FILE))
+        exit(0)
 
 
 if __name__ == "__main__":

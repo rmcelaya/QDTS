@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "qdts_node"
-version = "0.1.6"
-description = ""
+version = "0.1.8"
+description = "Software for QDTS node"
 authors = ["rmcelaya <rmcelaya@protonmail.com>"]
 
 [tool.poetry.dependencies]
@@ -10,6 +10,7 @@ simulaqron = "3.0.16"
 protobuf = "3.19.6"
 grpcio = "1.48.2"
 bitarray="2.8.1"
+python-daemon="2.3.2"
 
 [tool.poetry.dev-dependencies]
 
